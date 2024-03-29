@@ -524,7 +524,7 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * To assert reset
 		 * Write Reset Manager brgmodrst[lwsoc2fpga] = 1
 		 */
-		INFO("Assert LWS2F ...\n");
+		VERBOSE("Assert LWS2F ...\n");
 		mmio_setbits_32(SOCFPGA_RSTMGR(BRGMODRST),
 				(~brg_lst & (RSTMGR_BRGMODRST_SOC2FPGA
 				| RSTMGR_BRGMODRST_LWHPS2FPGA))
@@ -536,7 +536,7 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * To clear idle request
 		 * Write Reset Manager hdskreq[lwsoc2fpga_flush_req] = 0
 		 */
-		INFO("Clear LWS2F hdskreq ...\n");
+		VERBOSE("Clear LWS2F hdskreq ...\n");
 		mmio_clrbits_32(SOCFPGA_RSTMGR(HDSKREQ),
 				((~(brg_lst) << 9) & (RSTMGR_HDSKREQ_LWSOC2FPGAREQ
 				| RSTMGR_HDSKREQ_SOC2FPGAREQ))
@@ -549,7 +549,7 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Write Reset Manager hdskack[lwsoc2fpga_flush_ack] = 1
 		 * This bit is W1S/W1C
 		 */
-		INFO("Clear LWS2F hdskack ...\n");
+		VERBOSE("Clear LWS2F hdskack ...\n");
 		mmio_setbits_32(SOCFPGA_RSTMGR(HDSKACK),
 				((~(brg_lst) << 9) & (RSTMGR_HDSKREQ_LWSOC2FPGAREQ
 				| RSTMGR_HDSKREQ_SOC2FPGAREQ))
@@ -591,7 +591,9 @@ int socfpga_bridges_enable(uint32_t mask)
 				&f2s_idleack, &f2s_respempty, &f2s_cmdidle);
 #if PLATFORM_MODEL == PLAT_SOCFPGA_AGILEX5
 	/* Enable FPGA2SOC bridge */
-	if (brg_mask & RSTMGR_BRGMODRSTMASK_FPGA2SOC) {
+
+	if ((brg_mask & RSTMGR_BRGMODRSTMASK_FPGA2SOC)
+		&& ((brg_lst & RSTMGR_BRGMODRSTMASK_FPGA2SOC) != 0)) {
 		/*
 		 * To request handshake
 		 * Write Reset Manager hdsken[fpgahsen] = 1
@@ -611,9 +613,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[fpgahsack] = 1
 		 */
 		VERBOSE("Get FPGA hdskack(fpgahsack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRST_FPGA2SOC) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK,
+				300);
+		}
 
 		if (ret < 0) {
 			ERROR("FPGA bridge fpga handshake fpgahsreq: Timeout\n");
@@ -632,9 +637,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[f2s_flush_ack] = 1
 		 */
 		VERBOSE("Get F2S hdskack(f2s_flush_ack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_FPGA2SOCACK, RSTMGR_HDSKACK_FPGA2SOCACK,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRST_FPGA2SOC) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_FPGA2SOCACK, RSTMGR_HDSKACK_FPGA2SOCACK,
+				300);
+		}
 
 		if (ret < 0) {
 			ERROR("F2S bridge fpga handshake f2sdram_flush_req: Timeout\n");
@@ -660,9 +668,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[f2s_flush_ack] = 0
 		 */
 		VERBOSE("Get F2SDRAM hdskack(f2s_flush_ack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_FPGA2SOCACK, RSTMGR_HDSKACK_FPGA2SOCACK_DASRT,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRST_FPGA2SOC) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_FPGA2SOCACK, RSTMGR_HDSKACK_FPGA2SOCACK_DASRT,
+				300);
+		}
 
 		if (ret < 0) {
 			ERROR("F2S bridge fpga handshake f2s_flush_ack: Timeout\n");
@@ -673,9 +684,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[fpgahsack] = 0
 		 */
 		VERBOSE("Get FPGA hdskack(fpgahsack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK_DASRT,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRST_FPGA2SOC) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK_DASRT,
+				300);
+				}
 
 		if (ret < 0) {
 			ERROR("F2S bridge fpga handshake fpgahsack: Timeout\n");
@@ -704,7 +718,8 @@ int socfpga_bridges_enable(uint32_t mask)
 	}
 
 	/* Enable FPGA2SDRAM bridge */
-	if (brg_mask & RSTMGR_BRGMODRSTMASK_F2SDRAM0) {
+	if ((brg_mask & RSTMGR_BRGMODRSTMASK_F2SDRAM0)
+		&& ((brg_lst & RSTMGR_BRGMODRSTMASK_F2SDRAM0) != 0)) {
 		/*
 		 * To request handshake
 		 * Write Reset Manager hdsken[fpgahsen] = 1
@@ -724,9 +739,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[fpgahsack] = 1
 		 */
 		VERBOSE("Get F2SDRAM hdskack(fpgahsack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRSTMASK_F2SDRAM0) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK,
+				300);
+		}
 
 		if (ret < 0) {
 			ERROR("F2SDRAM bridge fpga handshake fpgahsreq: Timeout\n");
@@ -745,9 +763,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[f2sdram_flush_ack] = 1
 		 */
 		VERBOSE("Get F2SDRAM hdskack(f2sdram_flush_ack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_F2SDRAM0ACK, RSTMGR_HDSKACK_F2SDRAM0ACK,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRSTMASK_F2SDRAM0) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_F2SDRAM0ACK, RSTMGR_HDSKACK_F2SDRAM0ACK,
+				300);
+		}
 
 		if (ret < 0) {
 			ERROR("F2SDRAM bridge fpga handshake f2sdram_flush_req: Timeout\n");
@@ -772,9 +793,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[f2sdram_flush_ack] = 0
 		 */
 		VERBOSE("Get F2SDRAM hdskack(f2sdram_flush_ack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_F2SDRAM0ACK, RSTMGR_HDSKACK_F2SDRAM0ACK_DASRT,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRSTMASK_F2SDRAM0) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_F2SDRAM0ACK, RSTMGR_HDSKACK_F2SDRAM0ACK_DASRT,
+				300);
+		}
 
 		if (ret < 0) {
 			ERROR("F2SDRAM bridge fpga handshake f2sdram_flush_ack: Timeout\n");
@@ -785,9 +809,12 @@ int socfpga_bridges_enable(uint32_t mask)
 		 * Read Reset Manager hdskack[fpgahsack] = 0
 		 */
 		VERBOSE("Get F2SDRAM hdskack(fpgahsack) ...\n");
-		ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
-			RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK_DASRT,
-			300);
+		if ((mmio_read_32(SOCFPGA_RSTMGR(BRGMODRST))
+				& RSTMGR_BRGMODRSTMASK_F2SDRAM0) == 0x00) {
+			ret = poll_idle_status(SOCFPGA_RSTMGR(HDSKACK),
+				RSTMGR_HDSKACK_FPGAHSACK, RSTMGR_HDSKACK_FPGAHSACK_DASRT,
+				300);
+		}
 
 		if (ret < 0) {
 			ERROR("F2SDRAM bridge fpga handshake fpgahsack: Timeout\n");
