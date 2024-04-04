@@ -10,6 +10,7 @@
 
 #include "agilex5_memory_controller.h"
 #include "agilex5_system_manager.h"
+
 #include <platform_def.h>
 
 /* Platform Setting */
