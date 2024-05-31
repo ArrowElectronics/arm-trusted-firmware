@@ -17,6 +17,7 @@
 #include <lib/xlat_tables/xlat_tables_v2.h>
 #include <plat/common/platform.h>
 
+#include "agilex5_cache.h"
 #include "agilex5_power_manager.h"
 #include "ccu/ncore_ccu.h"
 #include "socfpga_mailbox.h"
@@ -193,7 +194,8 @@ void bl31_plat_arch_setup(void)
 	boot_core = (mmio_read_32(AGX5_PWRMGR(MPU_BOOTCONFIG)) & 0xC00);
 	NOTICE("BL31: Boot Core = %x\n", boot_core);
 	NOTICE("BL31: CPU ID = %x\n", cpuid);
-
+	INFO("BL31: Invalidate Data cache\n");
+	invalidate_dcache_all();
 }
 
 /* Get non-secure image entrypoint for BL33. Zephyr and Linux */
