@@ -19,6 +19,7 @@
 #include <lib/xlat_tables/xlat_tables_v2.h>
 
 #include "agilex5_clock_manager.h"
+#include "agilex5_ddr.h"
 #include "agilex5_memory_controller.h"
 #include "agilex5_mmc.h"
 #include "agilex5_pinmux.h"
@@ -117,9 +118,8 @@ void bl2_el3_early_platform_setup(u_register_t x0 __unused,
 
 	/*
 	 * TODO update list for BL2 EL3 init:
-	 * 1. DDR and IOSSM driver init
-	 * 2. Update CCU driver to match SM configuration, make it dynamic based on hand-off
-	 * 3. Update Combo PHY init and remove hard coding
+	 * 1. Update CCU driver to match SM configuration, make it dynamic based on hand-off
+	 * 2. Update Combo PHY init and remove hard coding
 	 */
 
 	init_ncore_ccu();
@@ -127,6 +127,9 @@ void bl2_el3_early_platform_setup(u_register_t x0 __unused,
 	socfpga_emac_init();
 
 	mailbox_init();
+
+	/* DDR and IOSSM driver init */
+	agilex5_ddr_init(&reverse_handoff_ptr);
 
 	if (combo_phy_init(&reverse_handoff_ptr) != 0) {
 		ERROR("Combo Phy initialization failed\n");
