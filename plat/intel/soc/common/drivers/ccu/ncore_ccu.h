@@ -452,5 +452,6 @@ typedef struct coh_ss_id {
 uint32_t init_ncore_ccu(void);
 void ncore_enable_ocram_firewall(void);
 void setup_smmu_stream_id(void);
+int flush_l3_dcache(void);
 
 #endif
