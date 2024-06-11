@@ -483,6 +483,11 @@ int socfpga_bridges_enable(uint32_t mask)
 				(~brg_lst & (RSTMGR_BRGMODRST_SOC2FPGA
 				| RSTMGR_BRGMODRST_LWHPS2FPGA))
 				| RSTMGR_BRGMODRST_SOC2FPGA);
+
+		/* Set System Manager soc bridge control register[soc2fpga_ready_latency_enable] = 1 */
+		VERBOSE("Set SOC soc2fpga_ready_latency_enable ...\n");
+		mmio_setbits_32(SOCFPGA_SYSMGR(FPGA_BRIDGE_CTRL),
+			SYSMGR_SOC_BRIDGE_CTRL_EN);
 	}
 
 /**************** LWSOCFPGA ****************/
@@ -566,6 +571,11 @@ int socfpga_bridges_enable(uint32_t mask)
 				((~brg_lst & (RSTMGR_BRGMODRST_SOC2FPGA
 				| RSTMGR_BRGMODRST_LWHPS2FPGA)))
 				| RSTMGR_BRGMODRST_LWHPS2FPGA);
+
+		/* Set System Manager lwsoc bridge control register[lwsoc2fpga_ready_latency_enable] = 1 */
+		VERBOSE("Set LWSOC lwsoc2fpga_ready_latency_enable ...\n");
+		mmio_setbits_32(SOCFPGA_SYSMGR(FPGA_BRIDGE_CTRL),
+			SYSMGR_LWSOC_BRIDGE_CTRL_EN);
 	}
 #else
 	if (brg_mask != 0U) {
@@ -954,6 +964,11 @@ int socfpga_bridges_disable(uint32_t mask)
 		mmio_setbits_32(SOCFPGA_RSTMGR(BRGMODRST),
 			RSTMGR_BRGMODRST_SOC2FPGA);
 
+		/* Clear System Manager soc bridge control register[soc2fpga_ready_latency_enable] = 1 */
+		VERBOSE("Clear SOC soc2fpga_ready_latency_enable ...\n");
+		mmio_clrbits_32(SOCFPGA_SYSMGR(FPGA_BRIDGE_CTRL),
+			SYSMGR_SOC_BRIDGE_CTRL_EN);
+
 		udelay(1000);
 	}
 
@@ -986,6 +1001,11 @@ int socfpga_bridges_disable(uint32_t mask)
 		VERBOSE("Assert LWS2F ...\n");
 		mmio_setbits_32(SOCFPGA_RSTMGR(BRGMODRST),
 			RSTMGR_BRGMODRST_LWHPS2FPGA);
+
+		/* Clear System Manager lwsoc bridge control register[lwsoc2fpga_ready_latency_enable] = 1 */
+		VERBOSE("Clear LWSOC lwsoc2fpga_ready_latency_enable ...\n");
+		mmio_clrbits_32(SOCFPGA_SYSMGR(FPGA_BRIDGE_CTRL),
+			SYSMGR_LWSOC_BRIDGE_CTRL_EN);
 
 		udelay(1000);
 	}
