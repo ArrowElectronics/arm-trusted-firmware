@@ -578,7 +578,7 @@ int socfpga_bridges_enable(uint32_t mask)
 
 		/* Wait until idle ack becomes 0 */
 		ret_hps = poll_idle_status(SOCFPGA_SYSMGR(NOC_IDLEACK),
-				       noc_mask, 0, 300);
+				       noc_mask, 0, 1000);
 	}
 #endif
 
