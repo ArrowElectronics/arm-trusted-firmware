@@ -17,6 +17,9 @@
 #include <lib/psci/psci.h>
 #include <plat/common/platform.h>
 #include "ccu/ncore_ccu.h"
+#if PLATFORM_MODEL == PLAT_SOCFPGA_AGILEX5
+#include "agilex5_cache.h"
+#endif
 #include "socfpga_mailbox.h"
 #include "socfpga_plat_def.h"
 #include "socfpga_private.h"

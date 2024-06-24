@@ -9,6 +9,22 @@
 #include <plat_macros.S>
 
 	.globl invalidate_dcache_all
+	.globl plat_invalidate_cache_low_el
+
+	/* --------------------------------------------------------
+	 * Invalidate for NS EL2 and EL1
+	 * --------------------------------------------------------
+	 */
+func plat_invalidate_cache_low_el
+	mrs	x0,SCR_EL3
+	orr	x1,x0,#SCR_NS_BIT
+	msr	SCR_EL3, x1
+	isb
+	tlbi	ALLE2
+	dsb	sy
+	tlbi	ALLE1
+	dsb	sy
+endfunc plat_invalidate_cache_low_el
 
 .pushsection .text.asm_dcache_level, "ax"
 func asm_dcache_level
