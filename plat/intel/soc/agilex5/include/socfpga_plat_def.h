@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, ARM Limited and Contributors. All rights reserved.
  * Copyright (c) 2019-2023, Intel Corporation. All rights reserved.
+ * Copyright (c) 2024, Altera Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -15,7 +16,6 @@
 
 /* Platform Setting */
 #define PLATFORM_MODEL						PLAT_SOCFPGA_AGILEX5
-#define BOOT_SOURCE						BOOT_SOURCE_SDMMC
 /* 1 = Flush cache, 0 = No cache flush.
  * Default for Agilex5 is Cache flush.
  */
