@@ -72,24 +72,29 @@ void bl2_el3_early_platform_setup(u_register_t x0 __unused,
 				  u_register_t x3 __unused)
 {
 	static console_t console;
-	handoff reverse_handoff_ptr = { 0 };
-
-	/* Bring all the required peripherals out of reset */
-	deassert_peripheral_reset();
+	handoff reverse_handoff_ptr;
 
 	/* Enable nonsecure access for peripherals and other misc components */
 	enable_nonsecure_access();
+
+	/* Bring all the required peripherals out of reset */
+	deassert_peripheral_reset();
 
 	/*
 	 * Initialize the UART console early in BL2 EL3 boot flow to get
 	 * the error/notice messages wherever required.
 	 */
 	console_16550_register(PLAT_INTEL_UART_BASE, PLAT_UART_CLOCK,
-			PLAT_BAUDRATE, &console);
+			       PLAT_BAUDRATE, &console);
 
-	/* Get the hand-off data */
+	/* Generic delay timer init */
+	generic_delay_timer_init();
+
+	socfpga_delay_timer_init();
+
+	/* Get the handoff data */
 	if (socfpga_get_handoff(&reverse_handoff_ptr)) {
-		ERROR("BL2: Failed to get the correct hand-off data\n");
+		ERROR("BL2: Failed to get the correct handoff data\n");
 		panic();
 	}
 
@@ -102,8 +107,11 @@ void bl2_el3_early_platform_setup(u_register_t x0 __unused,
 		panic();
 	}
 
-	/* Generic delay timer init */
-	generic_delay_timer_init();
+	/* Configure power manager PSS SRAM power gate */
+	config_pwrmgr_handoff(&reverse_handoff_ptr);
+
+	/* Initialize the mailbox to enable communication between HPS and SDM */
+	mailbox_init();
 
 	/* Perform a handshake with certain peripherals before issuing a reset */
 	config_hps_hs_before_warm_reset();
@@ -111,22 +119,10 @@ void bl2_el3_early_platform_setup(u_register_t x0 __unused,
 	/* TODO: watchdog init */
 	//watchdog_init(clkmgr_get_rate(CLKMGR_WDT_CLK_ID));
 
-	socfpga_delay_timer_init();
-
-	/* Configure power manager PSS SRAM power gate */
-	config_pwrmgr_handoff(&reverse_handoff_ptr);
-
-	/*
-	 * TODO update list for BL2 EL3 init:
-	 * 1. Update CCU driver to match SM configuration, make it dynamic based on hand-off
-	 * 2. Update Combo PHY init and remove hard coding
-	 */
-
+	/* Initialize the CCU module for hardware cache coherency */
 	init_ncore_ccu();
 
 	socfpga_emac_init();
-
-	mailbox_init();
 
 	/* DDR and IOSSM driver init */
 	agilex5_ddr_init(&reverse_handoff_ptr);
@@ -135,13 +131,10 @@ void bl2_el3_early_platform_setup(u_register_t x0 __unused,
 		ERROR("Combo Phy initialization failed\n");
 	}
 
-	/* Store magic number */
-	// TODO: Temp workaround to ungate testing
-	// mmio_write_32(L2_RESET_DONE_REG, PLAT_L2_RESET_REQ);
-
+	/* Enable FPGA bridges as required */
 	if (!intel_mailbox_is_fpga_not_ready()) {
 		socfpga_bridges_enable(SOC2FPGA_MASK | LWHPS2FPGA_MASK |
-					FPGA2SOC_MASK | F2SDRAM0_MASK);
+				       FPGA2SOC_MASK | F2SDRAM0_MASK);
 	}
 }
 
