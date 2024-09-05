@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019-2021, ARM Limited and Contributors. All rights reserved.
  * Copyright (c) 2019-2023, Intel Corporation. All rights reserved.
+ * Copyright (c) 2024, Altera Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -101,6 +102,15 @@ void bl2_el3_early_platform_setup(u_register_t x0 __unused,
 	/* Configure the pinmux */
 	config_pinmux(&reverse_handoff_ptr);
 
+	/* Configure OCRAM to NON SECURE ACCESS */
+	mmio_write_32(OCRAM_REGION_0_REG_BASE, OCRAM_NON_SECURE_ENABLE);
+	mmio_write_32(SOCFPGA_L4_PER_SCR_REG_BASE + SOCFPGA_SDMMC_SECU_BIT,
+		SOCFPGA_SDMMC_SECU_BIT_ENABLE);
+	mmio_write_32(SOCFPGA_L4_SYS_SCR_REG_BASE + SOCFPGA_SDMMC_SECU_BIT,
+		SOCFPGA_SDMMC_SECU_BIT_ENABLE);
+	mmio_write_32(SOCFPGA_LWSOC2FPGA_SCR_REG_BASE,
+		SOCFPGA_LWSOC2FPGA_ENABLE);
+
 	/* Configure the clock manager */
 	if (config_clkmgr_handoff(&reverse_handoff_ptr)) {
 		ERROR("BL2: Failed to initialize the clock manager\n");
@@ -155,7 +165,7 @@ void bl2_el3_plat_arch_setup(void)
 	switch (boot_source) {
 	case BOOT_SOURCE_SDMMC:
 		NOTICE("SDMMC boot\n");
-		sdmmc_init(&reverse_handoff_ptr, &params, &mmc_info);
+		cdns_mmc_init(&params, &mmc_info);
 		socfpga_io_setup(boot_source, PLAT_SDMMC_DATA_BASE);
 		break;
 

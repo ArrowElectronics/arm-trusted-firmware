@@ -17,7 +17,6 @@
 #include <drivers/mmc.h>
 #include <lib/utils.h>
 #include <plat/common/common_def.h>
-#include "wdt/watchdog.h"
 
 
 #define MMC_DEFAULT_MAX_RETRIES		5
@@ -652,11 +651,6 @@ size_t mmc_read_blocks(int lba, uintptr_t buf, size_t size)
 			return 0;
 		}
 	}
-
-#if ARM_LINUX_KERNEL_AS_BL33
-	/* TODO: Restart watchdog for reading each chunk byte */
-	watchdog_sw_rst();
-#endif
 
 	return size;
 }

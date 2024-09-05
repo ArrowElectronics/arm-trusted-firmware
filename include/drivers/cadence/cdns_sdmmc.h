@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2022, ARM Limited and Contributors. All rights reserved.
- * Copyright (c) 2022-2024, Intel Corporation. All rights reserved.
+ * Copyright (c) 2022-2023, Intel Corporation. All rights reserved.
+ * Copyright (c) 2024, Altera Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -10,7 +11,6 @@
 
 #include <drivers/cadence/cdns_combo_phy.h>
 #include <drivers/mmc.h>
-#include "socfpga_plat_def.h"
 
 #if MMC_DEVICE_TYPE == 0
 #define CONFIG_DMA_ADDR_T_64BIT			0
@@ -20,13 +20,17 @@
 #define COMBO_PHY_REG				0x0
 #define SDHC_EXTENDED_WR_MODE_MASK		0xFFFFFFF7
 #define SDHC_DLL_RESET_MASK			0x00000001
+#define MMC_MAX_BLOCK_LEN 512U
+
 /* HRS09 */
 #define SDHC_PHY_SW_RESET			BIT(0)
 #define SDHC_PHY_INIT_COMPLETE			BIT(1)
 #define SDHC_EXTENDED_RD_MODE(x)		((x) << 2)
 #define EXTENDED_WR_MODE			3
 #define SDHC_EXTENDED_WR_MODE(x)		((x) << 3)
-#define RDCMD_EN					15
+#define RDCMD_EN				(3 << 15)
+#define PHY_SW_RESET_EN				(1 << 0)
+#define PHY_INIT_COMPLETE_BIT			(1 << 1)
 #define SDHC_RDCMD_EN(x)			((x) << 15)
 #define SDHC_RDDATA_EN(x)			((x) << 16)
 
@@ -75,17 +79,17 @@
 #define CMD_STOP_ABORT_CMD			(4 << 22)
 #define CMD_RESUME_CMD				(2 << 22)
 #define CMD_SUSPEND_CMD				(1 << 22)
-#define DATA_PRESENT				(1 << 21)
-#define CMD_IDX_CHK_ENABLE			(1 << 20)
+#define DATA_PRESENT				(0x20)
+#define CMD_IDX_CHK_ENABLE			(0x10)
 #define CMD_WRITE				(0 << 4)
 #define CMD_READ				(1 << 4)
 #define	MULTI_BLK_READ				(1 << 5)
 #define RESP_ERR				(1 << 7)
-#define CMD_CHECK_RESP_CRC			(1 << 19)
-#define RES_TYPE_SEL_48				(2 << 16)
-#define RES_TYPE_SEL_136			(1 << 16)
-#define RES_TYPE_SEL_48_B			(3 << 16)
-#define RES_TYPE_SEL_NO				(0 << 16)
+#define CMD_CHECK_RESP_CRC			(0x08)
+#define RES_TYPE_SEL_48				(0x2)
+#define RES_TYPE_SEL_136			(0x1)
+#define RES_TYPE_SEL_48_B			(0x3)
+#define RES_TYPE_SEL_NO				(0x3)
 #define DMA_ENABLED				(1 << 0)
 #define BLK_CNT_EN				(1 << 1)
 #define AUTO_CMD_EN				(2 << 2)
@@ -106,28 +110,34 @@
 
 /* SRS09 */
 #define STATUS_DATA_BUSY			BIT(2)
+#define CI					16
+#define CHECK_CARD				BIT(CI)
 
 /* SRS10 */
+#define BIT1					(0 << 1)
+#define BIT4					(1 << 1)
+#define BIT8					(1 << 5)
+
 /* LED Control
  * State of this bit directly drives led port of the host
  * in order to control the external LED diode
  * Default value 0 << 1
  */
 #define LEDC					BIT(0)
-#define LEDC_OFF				0 << 1
+#define LEDC_OFF				(0 << 1)
 
 /* Data Transfer Width
  * Bit used to configure DAT bus width to 1 or 4
  * Default value 1 << 1
  */
 #define DT_WIDTH				BIT(1)
-#define DTW_4BIT				1 << 1
+#define DTW_4BIT				(1 << 1)
 
 /* Extended Data Transfer Width
  * This bit is to enable/disable 8-bit DAT bus width mode
  * Default value 1 << 5
  */
-#define EDTW_8BIT				1 << 5
+#define EDTW_8BIT				BIT(5)
 
 /* High Speed Enable
  * Selects operating mode to Default Speed (HSE=0) or High Speed (HSE=1)
@@ -136,8 +146,11 @@
 
 /* here 0 defines the 64 Kb size */
 #define MAX_64KB_PAGE				0
-#define EMMC_DESC_SIZE		(1<<20)
-
+#define EMMC_DESC_SIZE				(1<<20)
+#define DTCV_OFFSET				(0x22E)
+#define DTCV_VAL				(0xE)
+#define CICE_OFFSET				(0x20E)
+#define SRS_12_CC_EN				(1 << 0)
 /* SRS11 */
 /* Software Reset For All
  * When set to 1, the entire slot is reset
@@ -155,6 +168,12 @@
  * including data buffers and the DMA logic
  */
 #define SRDAT					BIT(26)
+
+
+/* SRS12 */
+/* Error mask */
+#define SRS12_ERR_MASK				0xFFFF8000U
+#define CDNS_CSD_BYTE_MASK			0x000000FFU
 
 /* SRS15 */
 /* UHS Mode Select
@@ -191,6 +210,9 @@
 #define SDMA					0 << 3
 #define ADMA2_32				2 << 3
 #define ADMA2_64				3 << 3
+#define DMA_SEL_BIT				3 << 3
+#define DMA_SEL_BIT_2				2 << 3
+#define DMA_SEL_BIT_3				3 << 3
 
 /* Preset Value Enable
  * Setting this bit to 1 triggers an automatically update of SRS11
@@ -233,9 +255,46 @@
 #define SDHC_CDNS_SRS13				0x234
 #define SDHC_CDNS_SRS14				0x238
 #define SDHC_CDNS_SRS15				0x23c
+#define SDHC_CDNS_SRS16				0x240
 #define SDHC_CDNS_SRS21				0x254
 #define SDHC_CDNS_SRS22				0x258
 #define SDHC_CDNS_SRS23				0x25c
+#define SDHC_CDNS_SRS24				0x260
+#define SDHC_CDNS_SRS25				0x264
+
+/* SRS00 */
+#define SAAR					(1)
+
+/* SRS03 */
+#define CMD_START				(U(1) << 31)
+#define CMD_USE_HOLD_REG			(1 << 29)
+#define CMD_UPDATE_CLK_ONLY			(1 << 21)
+#define CMD_SEND_INIT				(1 << 15)
+#define CMD_STOP_ABORT_CMD			(4 << 22)
+#define CMD_RESUME_CMD				(2 << 22)
+#define CMD_SUSPEND_CMD				(1 << 22)
+#define DMA_ENABLED				(1 << 0)
+#define BLK_CNT_EN				(1 << 1)
+#define AUTO_CMD_EN				(2 << 2)
+#define COM_IDX					24
+#define ERROR_INT				(1 << 15)
+#define INT_SBE					(1 << 13)
+#define INT_HLE					(1 << 12)
+#define INT_FRUN				(1 << 11)
+#define INT_DRT					(1 << 9)
+#define INT_RTO					(1 << 8)
+#define INT_DCRC				(1 << 7)
+#define INT_RCRC				(1 << 6)
+#define INT_RXDR				(1 << 5)
+#define INT_TXDR				(1 << 4)
+#define INT_DTO					(1 << 3)
+#define INT_CMD_DONE				(1 << 0)
+#define TRAN_COMP				(1 << 1)
+#define CDNS_HOST_CMD_INHIBIT			(BIT(0))
+#define CDNS_HOST_DATA_INHIBIT			(BIT(1))
+#define ACE_CMD_12				(BIT(2))
+
+#define PAGE_BUFFER_LEN				(64 * 1024)
 
 /* HRS07 */
 #define SDHC_CDNS_HRS07				0x1c
@@ -352,6 +411,45 @@
 #define ADMA_DESC_ATTR_ACT2			BIT(5)
 #define ADMA_DESC_TRANSFER_DATA			ADMA_DESC_ATTR_ACT2
 
+#define HRS_09_EXTENDED_RD_MODE			(1 << 2)
+#define HRS_09_EXTENDED_WR_MODE			(1 << 3)
+#define HRS_09_RDCMD_EN				(1 << 15)
+#define HRS_09_RDDATA_EN			(1 << 16)
+#define HRS_10_HCSDCLKADJ_VAL			(3)
+
+#define SRS11_SRFA				(1 << 24)
+#define SRS11_SRFA_CHK(x)			(x >> 24)
+#define CDNS_TIMEOUT				(5000)
+
+#define SDHCI_MAKE_CMD(c, f) (((c & 0xff) << 8) | (f & 0xff))
+
+/* Card busy and present */
+#define CARD_BUSY				1
+#define CARD_NOT_BUSY				0
+
+/* 500 ms delay to read the RINST register */
+#define DELAY_MS_SRS_READ			500
+#define DELAY_RES				10
+
+/* Check DV dfi_init val=0 */
+#define IO_MASK_END_DATA			0x0
+
+/* Check DV dfi_init val=2; DDR Mode */
+#define IO_MASK_END_DATA_DDR			0x2
+#define IO_MASK_START_DATA			0x0
+#define DATA_SELECT_OE_END_DATA			0x1
+
+#define TIMEOUT					100000
+
+/* General define */
+#define SDHC_REG_MASK				UINT_MAX
+#define SD_HOST_BLOCK_SIZE			0x200
+#define DTCVVAL_DEFAULT_VAL			0xE
+#define CDMMC_DMA_MAX_BUFFER_SIZE		64*1024
+#define CDNSMMC_ADDRESS_MASK			U(0x0f)
+#define CONFIG_CDNS_DESC_COUNT			8
+#define SD_HOST_CLK				200000000
+
 enum sd_opcode {
 	SD_GO_IDLE_STATE = 0,
 	SD_ALL_SEND_CID = 2,
@@ -389,6 +487,16 @@ enum sd_app_cmd {
 	SD_APP_SEND_OP_COND = 41,
 	SD_APP_CLEAR_CARD_DETECT = 42,
 	SD_APP_SEND_SCR = 51,
+};
+
+enum sd_opr_modes {
+	SD_HOST_OPR_MODE_HV4E_0_SDMA_32 = 0,
+	SD_HOST_OPR_MODE_HV4E_1_SDMA_32,
+	SD_HOST_OPR_MODE_HV4E_1_SDMA_64,
+	SD_HOST_OPR_MODE_HV4E_0_ADMA_32,
+	SD_HOST_OPR_MODE_HV4E_0_ADMA_64,
+	SD_HOST_OPR_MODE_HV4E_1_ADMA_32,
+	SD_HOST_OPR_MODE_HV4E_1_ADMA_64,
 };
 
 struct cdns_sdmmc_sdhc {
@@ -442,9 +550,6 @@ struct cdns_sdmmc_params {
 	uint32_t	combophy;
 };
 
-/* read and write API */
-size_t sdmmc_read_blocks(int lba, uintptr_t buf, size_t size);
-size_t sdmmc_write_blocks(int lba, const uintptr_t buf, size_t size);
 
 struct cdns_idmac_desc {
 	/*8 bit attribute*/
@@ -470,4 +575,8 @@ int cdns_sd_host_init(struct cdns_sdmmc_combo_phy *mmc_combo_phy_reg,
 struct cdns_sdmmc_sdhc *mmc_sdhc_reg);
 void cdns_set_sdmmc_var(struct cdns_sdmmc_combo_phy *combo_phy_reg,
 struct cdns_sdmmc_sdhc *sdhc_reg);
+int cdns_mmc_init(struct cdns_sdmmc_params *params, struct mmc_device_info *info);
+int cdns_program_phy_reg(struct cdns_sdmmc_combo_phy *combo_phy_reg,
+				struct cdns_sdmmc_sdhc *sdhc_reg);
+void cdns_host_set_clk(uint32_t clk);
 #endif
